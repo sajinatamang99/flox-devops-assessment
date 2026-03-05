@@ -1,0 +1,78 @@
+pipeline {
+    agent any
+
+    environment {
+        REGISTRY     = 'ghcr.io'
+        IMAGE_NAME   = 'flox/farm-health-api'
+        APP_VERSION  = '0.1.0'
+        REGISTRY_CREDS = credentials('registry-credentials')
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                sh """
+                    docker build -t ${IMAGE_NAME}:${APP_VERSION} \
+                                 -t ${IMAGE_NAME}:latest .
+                """
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh """
+                    docker rm -f test-container 2>/dev/null || true
+                    docker run -d -p 8000:8000 --name test-container \
+                        ${IMAGE_NAME}:${APP_VERSION}
+                    sleep 5
+
+                    RESPONSE=\$(curl -sf http://localhost:8000/health)
+                    echo "\$RESPONSE" | grep -q '"status":"healthy"' || exit 1
+                    echo "Health check passed"
+
+                    RESPONSE=\$(curl -sf http://localhost:8000/ready)
+                    echo "\$RESPONSE" | grep -q '"ready":true' || exit 1
+                    echo "Readiness check passed"
+                """
+            }
+            post {
+                always {
+                    sh 'docker rm -f test-container 2>/dev/null || true'
+                }
+            }
+        }
+
+        stage('Push') {
+            steps {
+                sh """
+                    echo \$REGISTRY_CREDS_PSW | docker login ${REGISTRY} \
+                        -u \$REGISTRY_CREDS_USR --password-stdin
+
+                    docker tag ${IMAGE_NAME}:${APP_VERSION} \
+                        ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
+                    docker tag ${IMAGE_NAME}:latest \
+                        ${REGISTRY}/${IMAGE_NAME}:latest
+
+                    docker push ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
+                    docker push ${REGISTRY}/${IMAGE_NAME}:latest
+                """
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh 'kubectl apply -f k8s/ --recursive'
+            }
+        }
+    }
+
+    post {
+        failure {
+            slackSend(
+                channel: '#deployments',
+                color: 'danger',
+                message: "Pipeline failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}\n${env.BUILD_URL}"
+            )
+        }
+    }
+}

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: farm-health-api-config
+  namespace: flox-farm
+  labels:
+    app: farm-health-api
+data:
+  APP_VERSION: "0.1.0"
+  LOG_LEVEL: "INFO"
+  ENVIRONMENT: "production"
+  PYTHONUNBUFFERED: "1"
+  
