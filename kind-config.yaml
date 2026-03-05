@@ -1,0 +1,12 @@
+# Kind cluster configuration for local development
+# Maps NodePort 30080 to host port 8080 for easy access
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: flox-farm
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 30080
+    hostPort: 8080
+    protocol: TCP
+    
