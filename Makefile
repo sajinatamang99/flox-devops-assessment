@@ -60,20 +60,14 @@ test: build ## Smoke test against a temporary container
 	fi
 	@docker rm -f $(CONTAINER_NAME)-test 2>/dev/null
 
-health: ## Run health check against deployed services
-	@services="http://localhost:8080 http://localhost:8000"; \
-	healthy=0; \
-	total=0; \
-	for s in $$services; do \
-		total=$$((total+1)); \
-		if curl -sf $$s/health >/dev/null 2>&1; then \
-			./healthcheck.sh $$s; \
-			healthy=$$((healthy+1)); \
-		else \
-			echo "$$s is not healthy"; \
-		fi; \
-	done; \
-	echo "Results: $$healthy/$$total services healthy"
+health: ## Run health check against deployed service
+	@if curl -sf http://localhost:8080/health >/dev/null 2>&1; then \
+		./healthcheck.sh http://localhost:8080; \
+	elif curl -sf http://localhost:8000/health >/dev/null 2>&1; then \
+		./healthcheck.sh http://localhost:8000; \
+	else \
+		echo "No service running. Run 'make setup' or 'make run' first."; exit 1; \
+	fi
 
 clean: ## Remove Docker images
 	@docker rm -f $(CONTAINER_NAME) 2>/dev/null || true
