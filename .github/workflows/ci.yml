@@ -1,7 +1,4 @@
 # CI/CD pipeline for FLOX Farm Health API
-# Stages: Build -> Test -> Push -> Deploy
-# The deploy stage uses Kind to prove the K8s manifests actually work
-
 name: CI/CD
 
 on:
@@ -45,7 +42,7 @@ jobs:
         path: /tmp/image.tar
         retention-days: 1
 
-  # Stage 2: Smoke test - run the container and verify /health returns healthy
+  # Stage 2: Smoke test (run the container and verify health)
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -103,8 +100,7 @@ jobs:
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.APP_VERSION }}
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-  # Stage 4: Deploy to a Kind cluster to validate K8s manifests end-to-end
-  # Creates a real cluster, loads the image, applies manifests, and runs healthcheck
+  # Stage 4: Deploy to a Kind cluster to validate K8s manifests and create a real cluster, loads the image, applies manifests, and runs healthcheck.
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
